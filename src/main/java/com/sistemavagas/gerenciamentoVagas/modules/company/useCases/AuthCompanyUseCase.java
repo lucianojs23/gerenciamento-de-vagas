@@ -6,6 +6,7 @@ import java.util.Arrays;
 
 import javax.naming.AuthenticationException;
 
+import com.sistemavagas.gerenciamentoVagas.modules.company.dto.AuthCompanyResponseDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -30,7 +31,7 @@ public class AuthCompanyUseCase {
 	@Autowired
 	private PasswordEncoder passwordEncoder;
 	
-	public String execute(AuthCompanyDTO authCompanyDTO) throws AuthenticationException {
+	public AuthCompanyResponseDTO execute(AuthCompanyDTO authCompanyDTO) throws AuthenticationException {
 		var company = this.companyRepository.findByUsername(authCompanyDTO.getUsername()).orElseThrow(
 				() -> {
 					throw new UsernameNotFoundException("Company not found");
@@ -44,10 +45,20 @@ public class AuthCompanyUseCase {
 		
 		//Se for igual, gerar token
 		Algorithm algorithm = Algorithm.HMAC256(secretKey);
+
+		var expiresIn = Instant.now().plus(Duration.ofHours(2));
+
 		var token = JWT.create().withIssuer("javagas")
 				.withSubject(company.getId().toString())
+				.withExpiresAt(expiresIn)
 				.withClaim("roles", Arrays.asList("COMPANY"))
 				.sign(algorithm);
-		return token;
+
+		var authCompanyResponseDTO = AuthCompanyResponseDTO.builder()
+				.access_token(token)
+				.expires_in(expiresIn.toEpochMilli())
+				.build();
+
+		return authCompanyResponseDTO;
 	}
 }
